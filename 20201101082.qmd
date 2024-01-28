@@ -1,0 +1,52 @@
+---
+title: "R kayip veri analizi odevi"
+format: html
+editor: visual
+---
+
+## Baraj doluluk oranlari analizi
+
+```{r}
+library(readr)
+library(naniar)
+library(tidyverse)
+library(VIM)
+library(dplyr)
+```
+
+```{r}
+dam_occupancy <- read.csv("dam_occupancy.csv")
+dam_occupancy$DATE <- format(as.Date(dam_occupancy$DATE, format="%Y-%m-%d"), "%Y")
+head(dam_occupancy,10)
+```
+
+veriyi dosyaya ekledim ve date i kullanabilmek için yıla çevirdim
+
+```{r}
+na_counts <- colSums(is.na(dam_occupancy))
+print(na_counts)
+```
+
+şuanda veride missing data yok veri setini MNAR yapmak istediğim için baraj rezervlerini analiz eden araç 150 nin altını okumuyor farzedip 150 altı değerleri sileceğim
+
+```{r}
+dam_occupancy_NA <- dam_occupancy %>%
+  mutate(GENERAL_DAM_RESERVED_WATER = ifelse(GENERAL_DAM_RESERVED_WATER < 150, NA, GENERAL_DAM_RESERVED_WATER))
+```
+
+tekrar na lara bakıyorum
+
+```{r}
+na_counts <- colSums(is.na(dam_occupancy_NA))
+print(na_counts)
+```
+
+k-Nearest imputation kullanarak verileri dolduruyorum
+
+```{r}
+dam_imp <- kNN(dam_occupancy_NA, k = 30, variable = "GENERAL_DAM_RESERVED_WATER", numFun = weighted.mean, weightDist = TRUE)
+
+dam_imp %>% 
+	select(DATE, GENERAL_DAM_RESERVED_WATER, GENERAL_DAM_RESERVED_WATER_imp) %>% 
+	marginplot(delimiter = "imp", main = "k = 30")
+```
